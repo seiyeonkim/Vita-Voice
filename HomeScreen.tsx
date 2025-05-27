@@ -1,3 +1,4 @@
+// HomeScreen.tsx (프로젝트 루트에 위치)
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -11,102 +12,101 @@ import {
   PermissionsAndroid,
   Platform,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigation/type';
 import { Recording } from './type';
 import { openAudioPicker, copySafFileToInternal } from './src/native/audioPicker';
+import {
+  loadRecordings,
+  addRecording,
+  deleteRecording,
+} from './src/services/recordingService';
 
-const STORAGE_KEY = '@recordings';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
-
 const audioPlayer = new AudioRecorderPlayer();
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [recordings, setRecordings] = useState<Recording[]>([]);
 
+  // 초기 로드
   useEffect(() => {
-    const load = async () => {
-      const json = await AsyncStorage.getItem(STORAGE_KEY);
-      if (json) setRecordings(JSON.parse(json));
-    };
-    load();
+    (async () => {
+      const list = await loadRecordings();
+      setRecordings(list);
+    })();
   }, []);
-
-  const save = async (data: Recording[]) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  };
 
   const requestPermission = async (): Promise<boolean> => {
     if (Platform.OS !== 'android') return true;
     const sdkVersion = parseInt(Platform.Version.toString(), 10);
     let granted = false;
     if (sdkVersion >= 33) {
-      const result = await PermissionsAndroid.request(
+      granted = (await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO
-      );
-      granted = result === PermissionsAndroid.RESULTS.GRANTED;
+      )) === PermissionsAndroid.RESULTS.GRANTED;
     } else {
-      const result = await PermissionsAndroid.request(
+      granted = (await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
-      );
-      granted = result === PermissionsAndroid.RESULTS.GRANTED;
+      )) === PermissionsAndroid.RESULTS.GRANTED;
     }
     if (!granted) Alert.alert('권한 거부됨', '오디오 파일 접근 권한이 필요합니다.');
     return granted;
   };
 
   const handleUpload = async () => {
-    const hasPermission = await requestPermission();
-    if (!hasPermission) return;
+    if (!(await requestPermission())) return;
     const file = await openAudioPicker();
-    if (!file || !file.uri || !file.name) return;
+    if (!file?.uri || !file?.name) return;
+
     try {
-      await handleSelectFile({ uri: file.uri, name: file.name });
-    } catch (err) {
-      Alert.alert('오류', '파일 복사 또는 재생 중 문제가 발생했습니다.');
-      console.error(err);
+      // 파일 복사 및 duration 측정
+      const destPath = await copySafFileToInternal(file.uri);
+      await audioPlayer.stopPlayer();
+      audioPlayer.removePlayBackListener();
+      await audioPlayer.startPlayer(destPath);
+
+      let duration = 0;
+      await new Promise<void>((resolve) => {
+        audioPlayer.addPlayBackListener((e) => {
+          duration = e.duration;
+          audioPlayer.stopPlayer();
+          audioPlayer.removePlayBackListener();
+          resolve();
+        });
+      });
+
+      const originalName = decodeURIComponent(file.name).replace(/\.[^/.]+$/, '');
+      const newRec: Recording = {
+        id: Date.now().toString(),
+        title: originalName,
+        createdAt: new Date().toISOString(),
+        duration: Math.round(duration / 1000),
+        path: destPath,
+        uri: destPath,
+      };
+
+      // 서비스 함수로 추가
+      const updatedList = await addRecording(newRec);
+      setRecordings(updatedList);
+
+      Alert.alert('성공', '파일이 추가되었습니다.');
+      navigation.getParent()?.navigate('MyRecordings');
+    } catch (err: any) {
+      if (err.message === '이미 추가된 파일입니다.') {
+        Alert.alert('중복', err.message);
+      } else {
+        console.error(err);
+        Alert.alert('오류', '파일 처리 중 문제가 발생했습니다.');
+      }
     }
   };
 
-  const handleSelectFile = async (file: { name: string; uri: string }) => {
-    const destPath = await copySafFileToInternal(file.uri);
-    await audioPlayer.stopPlayer();
-    audioPlayer.removePlayBackListener();
-
-    await audioPlayer.startPlayer(destPath);
-    let duration = 0;
-    await new Promise<void>((resolve) => {
-      audioPlayer.addPlayBackListener((e) => {
-        duration = e.duration;
-        audioPlayer.stopPlayer();
-        audioPlayer.removePlayBackListener();
-        resolve();
-      });
-    });
-
-    const originalName = decodeURIComponent(file.name).replace(/\.[^/.]+$/, '');
-    const newRecording: Recording = {
-      id: Date.now().toString(),
-      title: originalName,
-      createdAt: new Date().toISOString(),
-      duration: Math.round(duration / 1000),
-      path: destPath,
-      uri: destPath,
-    };
-
-    if (recordings.some((r) => r.uri === newRecording.uri)) {
-      Alert.alert('중복', '이미 추가된 파일입니다.');
-      return;
-    }
-    const updated = [newRecording, ...recordings];
-    setRecordings(updated);
-    save(updated);
-    Alert.alert('성공', '파일이 추가되었습니다.');
-    navigation.getParent()?.navigate('MyRecordings');
+  const handleDelete = async (id: string) => {
+    const updatedList = await deleteRecording(id);
+    setRecordings(updatedList);
   };
 
   const onPressRecord = () => {
@@ -143,7 +143,14 @@ export default function HomeScreen() {
         }
         data={recordings}
         keyExtractor={(item) => item.id}
-        renderItem={() => null}
+        renderItem={({ item }) => (
+          <View style={styles.recordItem}>
+            <Text>{item.title} ({item.duration}s)</Text>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <Text style={{ color: 'red' }}>삭제</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         contentContainerStyle={styles.listContainer}
       />
     </SafeAreaView>
@@ -189,4 +196,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-}); 
+  recordItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+});

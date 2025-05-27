@@ -1,19 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/type';
-
+import { saveGender, loadGender } from '../src/services/preferencesService';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Diagnosis'>;
 
 export default function DiagnosisScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [selected, setSelected] = useState<'male' | 'female' | null>(null);
 
-  const handleNext = () => {
-    if (selected) {
-      navigation.navigate('DiagnosisSelect', { gender: selected });
+// 화면 로드시 이전 선택 불러오기
+useEffect(() => {
+   (async () => {
+     const prev = await loadGender();
+     if (prev) setSelected(prev);
+   })();
+ }, []);
+
+  const handleNext = async () => {
+    if (!selected) {
+     Alert.alert('선택해주세요', '성별을 먼저 선택하세요.');
+      return;
     }
+   // 선택 저장
+   await saveGender(selected);
+
+    navigation.navigate('DiagnosisSelect', { gender: selected });
   };
 
   return (
@@ -47,6 +60,7 @@ export default function DiagnosisScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 24 },

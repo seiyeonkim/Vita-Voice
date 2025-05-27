@@ -1,3 +1,4 @@
+// src/screens/DiagnosisResultScreen.tsx
 import React, { useEffect } from 'react';
 import {
   View,
@@ -13,23 +14,14 @@ import {
   useNavigation,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../navigation/type';
+import {
+  addHistoryRecord,
+  HistoryRecord,
+} from '../src/services/historyService';
 
 type Route = RouteProp<RootStackParamList, 'Result'>;
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// 로컬스토리지에 저장할 히스토리 타입
-type HistoryRecord = {
-  id: string;
-  title: string;
-  date: string;
-  recordingName: string;
-  diagnosisDate: string;
-  prediction1: number;
-  prediction2: number;
-  diagnosis: ('parkinson' | 'language')[];
-};
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Result'>;
 
 export default function DiagnosisResultScreen() {
   const route = useRoute<Route>();
@@ -39,10 +31,10 @@ export default function DiagnosisResultScreen() {
     prediction1,
     prediction2,
     diagnosis = [],
-    skipSave = false,       // ← 플래그 기본값 false
+    skipSave = false,
   } = route.params;
 
-  // 한 번만 계산되는 현재 시각 문자열
+  // 결과 화면에 표시할 “지금” 시각
   const now = new Date().toLocaleString('ko-KR', {
     year: 'numeric',
     month: '2-digit',
@@ -52,41 +44,27 @@ export default function DiagnosisResultScreen() {
   });
 
   useEffect(() => {
-    if (skipSave) {
-      return; // 이미 저장된 기록 보기라면, 저장 로직 아예 실행 안 함
-    }
-    const saveHistory = async () => {
-      const json = await AsyncStorage.getItem('@history');
-      const existing: HistoryRecord[] = json ? JSON.parse(json) : [];
+    if (skipSave) return; // 이미 저장된 기록을 보러 온 경우 저장 로직 건너뜀
 
-      // 고유 ID (파일명 + 시각)
-      const uniqueId = `${recordingName}|${now}`;
-      if (existing.some(r => r.id === uniqueId)) {
-        return; // 혹시 또 중복이라면 바로 종료
-      }
-
-      const newRecord: HistoryRecord = {
-        id: uniqueId,
-        title: diagnosis
-          .map(d => (d === 'parkinson' ? '파킨슨병' : '성대 질환'))
-          .join(', '),
-        date: now,
-        recordingName,
-        diagnosisDate: now,
-        prediction1,
-        prediction2,
-        diagnosis,
-      };
-
-      const updated = [newRecord, ...existing];
-      await AsyncStorage.setItem('@history', JSON.stringify(updated));
+    const record: HistoryRecord = {
+      id: `${recordingName}|${now}`,
+      title: diagnosis
+        .map(d => (d === 'parkinson' ? '파킨슨병' : '성대 질환'))
+        .join(', '),
+      date: now,
+      recordingName,
+      diagnosisDate: now,
+      prediction1,
+      prediction2,
+      diagnosis,
     };
 
-    saveHistory();
-  }, []); // 빈 배열: 마운트 시에만 한 번 실행
+    addHistoryRecord(record);
+  }, []);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* 헤더 */}
       <View style={styles.header}>
         <View style={{ width: 24 }} />
         <Text style={styles.headerTitle}>진단 결과</Text>
@@ -95,6 +73,7 @@ export default function DiagnosisResultScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* 파일명 · 진단 일시 */}
       <View style={styles.infoBox}>
         <Text style={styles.infoLabel}>파일명</Text>
         <Text style={styles.infoValue}>{recordingName}</Text>
@@ -102,6 +81,7 @@ export default function DiagnosisResultScreen() {
         <Text style={styles.infoValue}>{now}</Text>
       </View>
 
+      {/* 파킨슨병 결과 */}
       {diagnosis.includes('parkinson') && (
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
@@ -120,6 +100,7 @@ export default function DiagnosisResultScreen() {
         </View>
       )}
 
+      {/* 성대 질환 결과 */}
       {diagnosis.includes('language') && (
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>

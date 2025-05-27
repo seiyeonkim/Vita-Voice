@@ -1,80 +1,84 @@
+// src/screens/MyRecordingsScreen.tsx
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList,
-  TouchableOpacity, Image, SafeAreaView, Alert,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import RNFS from 'react-native-fs';
 import { Recording } from '../type';
 import DetailPlayer from '../components/DetailPlayer';
-
-const STORAGE_KEY = '@recordings';
+import {
+  loadRecordings,
+  deleteRecording,
+  renameRecording,
+} from '../src/services/recording';
 
 export default function MyRecordingsScreen() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // 화면 초기 로드: 저장된 녹음 목록 불러오기
   useEffect(() => {
-    const load = async () => {
-      const json = await AsyncStorage.getItem(STORAGE_KEY);
-      if (json) {
-        setRecordings(JSON.parse(json));
-      }
-    };
-    load();
+    (async () => {
+      const list = await loadRecordings();
+      setRecordings(list);
+    })();
   }, []);
 
-  const save = async (data: Recording[]) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  };
-
+  // 삭제 처리: 서비스 함수 호출 후 상태 업데이트
   const handleDelete = async (id: string) => {
-    const target = recordings.find(r => r.id === id);
-    if (target?.path) {
-      try {
-        const exists = await RNFS.exists(target.path);
-        if (exists) await RNFS.unlink(target.path);
-      } catch (e) {
-        console.warn('파일 삭제 실패:', e);
-      }
-    }
-    const updated = recordings.filter(r => r.id !== id);
+    const updated = await deleteRecording(id);
     setRecordings(updated);
-    save(updated);
   };
 
-  const handleRename = (id: string, newTitle: string) => {
-    const updated = recordings.map(r =>
-      r.id === id ? { ...r, title: newTitle } : r
-    );
+  // 이름 변경: 서비스 함수 호출 후 상태 업데이트
+  const handleRename = async (id: string, newTitle: string) => {
+    const updated = await renameRecording(id, newTitle);
     setRecordings(updated);
-    save(updated);
   };
 
+  // ISO 문자열을 'YYYY-MM-DD HH:mm'로 포맷
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+      d.getHours()
+    )}:${pad(d.getMinutes())}`;
   };
 
+  // 리스트 항목 렌더링
   const renderItem = ({ item }: { item: Recording }) => {
     const isExpanded = expandedId === item.id;
     const durationSec = Number(item.duration);
 
     return (
-      <View>
+      <View style={styles.wrapper}>
         <TouchableOpacity
           style={styles.card}
-          onPress={() => setExpandedId(prev => (prev === item.id ? null : item.id))}
+          activeOpacity={0.8}
+          onPress={() =>
+            setExpandedId(prev => (prev === item.id ? null : item.id))
+          }
         >
-          <Image source={require('../assets/images/mic.png')} style={styles.icon} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{item.title}</Text>
+          <Image
+            source={require('../assets/images/mic.png')}
+            style={styles.icon}
+          />
+          <View style={styles.info}>
+            <Text numberOfLines={1} style={styles.title}>
+              {item.title}
+            </Text>
             <Text style={styles.meta}>
-              {formatDate(item.createdAt)} {durationSec > 0 ? `· ${durationSec}초` : ''}
+              {formatDate(item.createdAt)}
+              {durationSec > 0 ? ` · ${durationSec}초` : ''}
             </Text>
           </View>
-          <Text style={styles.arrowText}>{isExpanded ? '▲' : '▼'}</Text>
+          <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
         </TouchableOpacity>
 
         {isExpanded && (
@@ -85,10 +89,14 @@ export default function MyRecordingsScreen() {
               onDelete={() =>
                 Alert.alert(
                   '삭제 확인',
-                  '이 녹음을 삭제하시겠습니까?',
+                  '정말 이 녹음을 삭제하시겠습니까?',
                   [
                     { text: '취소', style: 'cancel' },
-                    { text: '삭제', style: 'destructive', onPress: () => handleDelete(item.id) },
+                    {
+                      text: '삭제',
+                      style: 'destructive',
+                      onPress: () => handleDelete(item.id),
+                    },
                   ]
                 )
               }
@@ -101,63 +109,81 @@ export default function MyRecordingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>내 음성 파일</Text>
       <FlatList
         data={recordings}
         keyExtractor={item => item.id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={styles.list}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f9fa', padding: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f2f4f7',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
   header: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
-    marginBottom: 20,
     color: '#333',
+    marginBottom: 12,
+  },
+  list: {
+    paddingBottom: 30,
+  },
+  wrapper: {
+    marginBottom: 8,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 16,
-    marginBottom: 12,
-    elevation: 3,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 2,
   },
   icon: {
-    width: 32,
-    height: 32,
-    marginRight: 14,
+    width: 28,
+    height: 28,
+    marginRight: 12,
     resizeMode: 'contain',
   },
+  info: {
+    flex: 1,
+  },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#222',
   },
   meta: {
     fontSize: 12,
-    color: '#777',
+    color: '#666',
     marginTop: 4,
   },
-  arrowText: {
-    fontSize: 18,
-    color: '#999',
+  chevron: {
+    fontSize: 16,
+    color: '#bbb',
     marginLeft: 8,
   },
   detail: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 12,
-    marginBottom: 10,
+    marginTop: 4,
     elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 1,
   },
 });

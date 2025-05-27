@@ -1,21 +1,32 @@
+// src/screens/LoadingScreen.tsx
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { RouteProp } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ActivityIndicator
+} from 'react-native';
+import {
+  useNavigation,
+  useRoute,
+  RouteProp         
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/type';
+import { wait } from '../src/services/timerService';  // ← 경로 수정
 
-type Route = RouteProp<RootStackParamList, 'Loading'>;
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Loading'>;
+type LoadingRouteProp = RouteProp<RootStackParamList, 'Loading'>;
+type LoadingNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Loading'>;
 
 export default function LoadingScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<Route>();
-
-  const { recording, diagnosis,diagnosisDate } = route.params;
+  const navigation = useNavigation<LoadingNavigationProp>();
+  const route = useRoute<LoadingRouteProp>();
+  const { recording, diagnosis, diagnosisDate } = route.params;
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    (async () => {
+      await wait(2000);  // 2초 대기
       navigation.navigate('Result', {
         recordingName: recording.title,
         diagnosisDate,
@@ -23,8 +34,7 @@ export default function LoadingScreen() {
         prediction2: 85,
         diagnosis,
       });
-    }, 2000);
-    return () => clearTimeout(timer);
+    })();
   }, []);
 
   return (
