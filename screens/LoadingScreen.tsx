@@ -12,7 +12,6 @@ export default function LoadingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<Route>();
 
-  // ✅ diagnosis도 포함해서 구조분해
   const { recording, diagnosis,diagnosisDate } = route.params;
 
   useEffect(() => {

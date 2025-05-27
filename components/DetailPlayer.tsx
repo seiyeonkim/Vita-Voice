@@ -4,7 +4,7 @@ import {
   TextInput, Image, Alert, Keyboard,
 } from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import { Recording } from '../type'; 
+import { Recording } from '../type';
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
@@ -14,19 +14,20 @@ type DetailPlayerProps = {
   onDelete: () => void;
 };
 
-export default function DetailPlayer({ recording, onRename, onDelete }: DetailPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [positionSec, setPositionSec] = useState(0);
-  const [durationSec, setDurationSec] = useState(0);
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempTitle, setTempTitle] = useState(recording.title);
+export default function DetailPlayer({
+  recording,
+  onRename,
+  onDelete,
+}: DetailPlayerProps) {
+  const initialDurationMs = (Number(recording.duration) || 0) * 1000; // 초→밀리초
+  const [isPlaying, setIsPlaying]       = useState(false);
+  const [positionSec, setPositionSec]   = useState(0);
+  const [durationSec, setDurationSec]   = useState(initialDurationMs);
+  const [isEditing, setIsEditing]       = useState(false);
+  const [tempTitle, setTempTitle]       = useState(recording.title);
   const isSeeking = useRef(false);
 
-  useEffect(() => {
-    // 녹음된 duration을 초기에 설정
-    setDurationSec(Number(recording.duration)|| 0);
-  }, [recording.duration]);
-
+  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
       audioRecorderPlayer.stopPlayer();
@@ -39,16 +40,23 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
       await audioRecorderPlayer.pausePlayer();
       setIsPlaying(false);
     } else {
-      await audioRecorderPlayer.startPlayer(recording.path);
-      audioRecorderPlayer.addPlayBackListener((e) => {
-        if (!isSeeking.current && e.duration > 0) {
+      // 이미 재생 중 멈춘 상태라면 resume, 아니면 새로 start
+      if (positionSec > 0 && positionSec < durationSec) {
+        await audioRecorderPlayer.resumePlayer();
+      } else {
+        await audioRecorderPlayer.startPlayer(recording.path);
+      }
+      // 플레이백 리스너 (위치와 전체 길이 동시 갱신)
+      audioRecorderPlayer.addPlayBackListener(e => {
+        if (!isSeeking.current) {
           setPositionSec(e.currentPosition);
-          if (durationSec === 0 && e.duration > 0) {
-            setDurationSec(e.duration);
-        }
+          setDurationSec(e.duration);
         }
         if (e.currentPosition >= e.duration) {
+          audioRecorderPlayer.stopPlayer();
+          audioRecorderPlayer.removePlayBackListener();
           setIsPlaying(false);
+          setPositionSec(0);
         }
       });
       setIsPlaying(true);
@@ -57,7 +65,9 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
 
   const formatTime = (ms: number) => {
     const totalSec = Math.floor(ms / 1000);
-    const min = Math.floor(totalSec / 60).toString().padStart(2, '0');
+    const min = Math.floor(totalSec / 60)
+      .toString()
+      .padStart(2, '0');
     const sec = (totalSec % 60).toString().padStart(2, '0');
     return `${min}:${sec}`;
   };
@@ -68,20 +78,19 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
       onRename(trimmed);
     }
     setIsEditing(false);
-    Keyboard.dismiss(); // 키보드 닫기
-  };
-
-  const seekTo = async (value: number) => {
-    isSeeking.current = false;
-    const pos = await audioRecorderPlayer.seekToPlayer(value);
-    setPositionSec(Number(pos));
+    Keyboard.dismiss();
   };
 
   const jumpSec = async (sec: number) => {
+    isSeeking.current = true;
     const target = positionSec + sec * 1000;
     const clamped = Math.max(0, Math.min(durationSec, target));
-    const pos = await audioRecorderPlayer.seekToPlayer(clamped);
-    setPositionSec(Number(pos));
+    await audioRecorderPlayer.seekToPlayer(clamped);
+    setPositionSec(clamped);
+    // 짧게 플래그 유지 후 해제
+    setTimeout(() => {
+      isSeeking.current = false;
+    }, 200);
   };
 
   const confirmDelete = () => {
@@ -89,25 +98,21 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
       '삭제 확인',
       '녹음을 삭제하시겠습니까?',
       [
-        { text: '아니오', style: 'cancel' },
-        {
-          text: '예',
-          onPress: onDelete,
-          style: 'destructive',
-        },
+        { text: '취소', style: 'cancel' },
+        { text: '삭제', style: 'destructive', onPress: onDelete },
       ],
       { cancelable: true }
     );
   };
 
   const formatCreatedAt = (createdAt: string) => {
-    const date = new Date(createdAt);
-    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours()}시 ${date.getMinutes()}분 ${date.getSeconds()}초`;
+    const d = new Date(createdAt);
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours()}시 ${d.getMinutes()}분`;
   };
 
   return (
     <View style={styles.playerContainer}>
-      <View style={styles.titleRow}>
+      <View style={styles.headerRow}>
         {isEditing ? (
           <TextInput
             value={tempTitle}
@@ -115,29 +120,36 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
             onChangeText={setTempTitle}
             onBlur={handleRename}
             onSubmitEditing={handleRename}
-            blurOnSubmit={true}
             returnKeyType="done"
-            keyboardType="default"
+            blurOnSubmit
           />
         ) : (
-          <TouchableOpacity onLongPress={() => setIsEditing(true)} style={{ flex: 1 }}>
+          <TouchableOpacity
+            onLongPress={() => setIsEditing(true)}
+            style={{ flex: 1 }}>
             <Text style={styles.title}>{recording.title}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={confirmDelete}>
-          <Text style={styles.delete}>X</Text>
+        <TouchableOpacity
+          onPress={confirmDelete}
+          style={styles.deleteButton}>
+          <Text style={styles.deleteText}>삭제</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.metaInfo}>{formatCreatedAt(recording.createdAt)}</Text>
-
+      <Text style={styles.metaInfo}>
+        {formatCreatedAt(recording.createdAt)}
+      </Text>
       <Text style={styles.time}>
         {formatTime(positionSec)} / {formatTime(durationSec)}
       </Text>
 
       <View style={styles.controlsRow}>
         <TouchableOpacity onPress={() => jumpSec(-15)}>
-          <Image source={require('../assets/images/backward.png')} style={styles.controlIcon} />
+          <Image
+            source={require('../assets/images/backward.png')}
+            style={styles.controlIcon}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={togglePlayback}>
@@ -152,7 +164,10 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => jumpSec(15)}>
-          <Image source={require('../assets/images/forward.png')} style={styles.controlIcon} />
+          <Image
+            source={require('../assets/images/forward.png')}
+            style={styles.controlIcon}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -161,58 +176,77 @@ export default function DetailPlayer({ recording, onRename, onDelete }: DetailPl
 
 const styles = StyleSheet.create({
   playerContainer: {
-    backgroundColor: '#f7f7f7',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 16,
     marginTop: 8,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  titleRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
+    color: '#222',
   },
   titleInput: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     borderBottomWidth: 1,
-    borderColor: '#007aff',
+    borderColor: '#00bcd4',
     flex: 1,
+    paddingVertical: 4,
   },
-  delete: {
-    fontSize: 18,
-    color: '#ff3b30',
+  deleteButton: {
+    backgroundColor: '#ff5252',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  deleteText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   metaInfo: {
-    marginTop: 4,
-    textAlign: 'center',
-    color: '#666',
+    marginTop: 6,
     fontSize: 13,
+    color: '#666',
+    textAlign: 'left',
+  },
+  time: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#333',
   },
   controlsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 16,
+    marginTop: 16,
+    gap: 20,
   },
   controlIcon: {
     width: 28,
     height: 28,
     resizeMode: 'contain',
+    tintColor: '#444',
   },
   playIcon: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     resizeMode: 'contain',
-  },
-  time: {
-    textAlign: 'center',
-    marginTop: 8,
-    color: '#444',
   },
 });

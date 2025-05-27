@@ -7,25 +7,42 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import {
+  RouteProp,
+  useRoute,
+  useNavigation,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/type';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootStackParamList } from '../navigation/type';
 
 type Route = RouteProp<RootStackParamList, 'Result'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+// 로컬스토리지에 저장할 히스토리 타입
+type HistoryRecord = {
+  id: string;
+  title: string;
+  date: string;
+  recordingName: string;
+  diagnosisDate: string;
+  prediction1: number;
+  prediction2: number;
+  diagnosis: ('parkinson' | 'language')[];
+};
+
 export default function DiagnosisResultScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<NavigationProp>();
-
   const {
     recordingName,
     prediction1,
     prediction2,
     diagnosis = [],
+    skipSave = false,       // ← 플래그 기본값 false
   } = route.params;
 
+  // 한 번만 계산되는 현재 시각 문자열
   const now = new Date().toLocaleString('ko-KR', {
     year: 'numeric',
     month: '2-digit',
@@ -35,11 +52,23 @@ export default function DiagnosisResultScreen() {
   });
 
   useEffect(() => {
+    if (skipSave) {
+      return; // 이미 저장된 기록 보기라면, 저장 로직 아예 실행 안 함
+    }
     const saveHistory = async () => {
-      const newRecord = {
-        id: `${Date.now()}`,
+      const json = await AsyncStorage.getItem('@history');
+      const existing: HistoryRecord[] = json ? JSON.parse(json) : [];
+
+      // 고유 ID (파일명 + 시각)
+      const uniqueId = `${recordingName}|${now}`;
+      if (existing.some(r => r.id === uniqueId)) {
+        return; // 혹시 또 중복이라면 바로 종료
+      }
+
+      const newRecord: HistoryRecord = {
+        id: uniqueId,
         title: diagnosis
-          .map((d) => (d === 'parkinson' ? '파킨슨병' : '성대 질환'))
+          .map(d => (d === 'parkinson' ? '파킨슨병' : '성대 질환'))
           .join(', '),
         date: now,
         recordingName,
@@ -49,63 +78,65 @@ export default function DiagnosisResultScreen() {
         diagnosis,
       };
 
-      const json = await AsyncStorage.getItem('@history');
-      const existing = json ? JSON.parse(json) : [];
       const updated = [newRecord, ...existing];
       await AsyncStorage.setItem('@history', JSON.stringify(updated));
     };
 
     saveHistory();
-  }, []);
+  }, []); // 빈 배열: 마운트 시에만 한 번 실행
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* 상단 헤더 */}
       <View style={styles.header}>
-        <View style={{ width: 60 }} />
+        <View style={{ width: 24 }} />
         <Text style={styles.headerTitle}>진단 결과</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Tabs')} style={{ width: 60, alignItems: 'flex-end' }}>
-          <Text style={styles.headerExit}>종료</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Tabs')}>
+          <Text style={styles.exitText}>종료</Text>
         </TouchableOpacity>
       </View>
 
-      {/* 콘텐츠 */}
-      <View style={styles.content}>
-        <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>녹음 파일명</Text>
-          <Text style={styles.infoValue}>{recordingName}</Text>
-          <Text style={styles.infoLabel}>진단 일자</Text>
-          <Text style={styles.infoValue}>{now}</Text>
-        </View>
-
-        {diagnosis.includes('parkinson') && (
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Image source={require('../assets/images/brain.png')} style={styles.icon} />
-              <Text style={styles.cardTitle}>파킨슨병</Text>
-            </View>
-            <Text style={styles.resultText}>정상</Text>
-            <Text style={styles.probability}>예측 확률: {prediction1}%</Text>
-            <Text style={styles.cardDescription}>
-              파킨슨병은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가 나타나지 않습니다.
-            </Text>
-          </View>
-        )}
-
-        {diagnosis.includes('language') && (
-          <View style={styles.card}>
-            <View style={styles.cardTitleRow}>
-              <Image source={require('../assets/images/language.png')} style={styles.icon} />
-              <Text style={styles.cardTitle}>성대 질환</Text>
-            </View>
-            <Text style={styles.resultText}>정상</Text>
-            <Text style={styles.probability}>예측 확률: {prediction2}%</Text>
-            <Text style={styles.cardDescription}>
-              성대 질환은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가 나타나지 않습니다.
-            </Text>
-          </View>
-        )}
+      <View style={styles.infoBox}>
+        <Text style={styles.infoLabel}>파일명</Text>
+        <Text style={styles.infoValue}>{recordingName}</Text>
+        <Text style={[styles.infoLabel, { marginTop: 12 }]}>진단 일시</Text>
+        <Text style={styles.infoValue}>{now}</Text>
       </View>
+
+      {diagnosis.includes('parkinson') && (
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Image
+              source={require('../assets/images/brain.png')}
+              style={styles.icon}
+            />
+            <Text style={styles.cardTitle}>파킨슨병</Text>
+          </View>
+          <Text style={styles.resultText}>정상</Text>
+          <Text style={styles.probability}>예측 확률: {prediction1}%</Text>
+          <Text style={styles.cardDescription}>
+            파킨슨병은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
+            나타나지 않습니다.
+          </Text>
+        </View>
+      )}
+
+      {diagnosis.includes('language') && (
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Image
+              source={require('../assets/images/language.png')}
+              style={styles.icon}
+            />
+            <Text style={styles.cardTitle}>성대 질환</Text>
+          </View>
+          <Text style={styles.resultText}>정상</Text>
+          <Text style={styles.probability}>예측 확률: {prediction2}%</Text>
+          <Text style={styles.cardDescription}>
+            성대 질환은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
+            나타나지 않습니다.
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -113,42 +144,37 @@ export default function DiagnosisResultScreen() {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 40,
     paddingHorizontal: 20,
     backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
+    justifyContent: 'space-between',
+    marginBottom: 32,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#111',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#222',
     textAlign: 'center',
-    flex: 1,
   },
-  headerExit: {
+  exitText: {
     fontSize: 16,
     color: '#4CAF50',
-    fontWeight: '600',
-    paddingHorizontal: 10,
-  },
-  content: {
-    flexGrow: 1,
+    fontWeight: '500',
   },
   infoBox: {
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 24,
+    backgroundColor: '#F4F6F8',
+    borderRadius: 12,
+    padding: 18,
+    marginBottom: 28,
   },
   infoLabel: {
     fontSize: 14,
     color: '#777',
-    marginTop: 10,
+    marginBottom: 4,
   },
   infoValue: {
     fontSize: 16,
@@ -156,26 +182,25 @@ const styles = StyleSheet.create({
     color: '#111',
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 18,
+    backgroundColor: '#F9FCFF',
+    borderRadius: 14,
+    padding: 22,
     marginBottom: 20,
     shadowColor: '#000',
-    alignItems: 'center',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.07,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
+    alignItems: 'center',
   },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 10,
   },
   icon: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     marginRight: 8,
   },
   cardTitle: {
@@ -185,15 +210,13 @@ const styles = StyleSheet.create({
   },
   resultText: {
     fontSize: 16,
-    textAlign: 'center',
-    color: '#4CAF50',
     fontWeight: '600',
+    color: '#4CAF50',
     marginBottom: 6,
   },
   probability: {
-    textAlign: 'center',
     fontSize: 14,
-    color: '#2e7d32',
+    color: '#388E3C',
     marginBottom: 10,
   },
   cardDescription: {

@@ -56,6 +56,7 @@ export default function SelectRecordingScreen() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.header}>진단할 음성파일을 선택해주세요.</Text>
       <FlatList
         data={recordings}
         keyExtractor={item => item.id}
@@ -67,8 +68,8 @@ export default function SelectRecordingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { fontSize: 20, fontWeight: 'bold', margin: 16 },
+  container: { flex: 1, backgroundColor: '#fff', paddingTop: 40 },
+  header: { fontSize: 16, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
   card: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#f9f9f9', padding: 16,

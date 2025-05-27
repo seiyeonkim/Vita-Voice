@@ -32,7 +32,7 @@ export default function DiagnosisSelectScreen() {
   navigation.navigate('SelectRecording', {
     gender,
     diagnosis: selected,
-    diagnosisDate, // ✅ 진단 시작 시간
+    diagnosisDate, 
   });
 };
 
@@ -49,7 +49,7 @@ export default function DiagnosisSelectScreen() {
         <Image source={require('../assets/images/brain.png')} style={styles.icon} />
         <View>
           <Text style={styles.title}>파킨슨병</Text>
-          <Text style={styles.desc}>경직, 떨림 등의 운동 장애</Text>
+          <Text style={styles.desc}>신경퇴행성 질환 검사</Text>
         </View>
       </TouchableOpacity>
 
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   selectedCard: {
-    borderColor: '#006A71',
+    borderColor: '#48A6A7',
     borderWidth: 2,
   },
   icon: { width: 48, height: 48, marginRight: 16, resizeMode: 'contain' },

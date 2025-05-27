@@ -1,3 +1,4 @@
+// App.tsx (변경 없음)
 import React from 'react';
 import { Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -7,11 +8,12 @@ import { RootStackParamList } from './navigation/type';
 
 import HomeScreen from './HomeScreen';
 import RecordScreen from './components/RecordScreen';
+import MyRecordingsScreen from './screens/MyRecordingsScreen';
 import DiagnosisScreen from './screens/DiagnosisScreen';
 import DiagnosisSelectScreen from './screens/DiagnosisSelectScreen';
 import SelectRecordingScreen from './screens/SelectRecordingScreen';
 import LoadingScreen from './screens/LoadingScreen';
-import DiagnosisResultScreen from './screens/DiagnosisResultScreen'; // ✅ 결과화면
+import DiagnosisResultScreen from './screens/DiagnosisResultScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import FAQScreen from './screens/FAQScreen';
 
@@ -21,16 +23,37 @@ const Tab = createBottomTabNavigator();
 
 const HomeStack = () => (
   <Stack.Navigator>
-    <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+    <Stack.Screen
+      name="Home"
+      component={HomeScreen}
+      options={{ headerShown: false }}
+    />
     <Stack.Screen name="Record" component={RecordScreen} />
+    <Stack.Screen
+      name="MyRecordings"
+      component={MyRecordingsScreen}
+      options={{ title: '내 음성 파일' }}
+    />
   </Stack.Navigator>
 );
 
 const DiagnosisStack = () => (
   <Stack.Navigator>
-    <Stack.Screen name="Diagnosis" component={DiagnosisScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="DiagnosisSelect" component={DiagnosisSelectScreen} options={{ title: '' }} />
-    <Stack.Screen name="SelectRecording" component={SelectRecordingScreen} options={{ title: '' }} />
+    <Stack.Screen
+      name="Diagnosis"
+      component={DiagnosisScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="DiagnosisSelect"
+      component={DiagnosisSelectScreen}
+      options={{ title: '' }}
+    />
+    <Stack.Screen
+      name="SelectRecording"
+      component={SelectRecordingScreen}
+      options={{ title: '' }}
+    />
     <Stack.Screen name="Loading" component={LoadingScreen} />
   </Stack.Navigator>
 );
@@ -78,8 +101,7 @@ const MainTabs = () => (
             source={
               focused
                 ? require('./assets/images/history(1).png')
-                : require('./assets/images/history.png')
-            }
+                : require('./assets/images/history.png')}
             style={{ width: 24, height: 24, resizeMode: 'contain', marginBottom: -2 }}
           />
         ),
@@ -94,8 +116,7 @@ const MainTabs = () => (
             source={
               focused
                 ? require('./assets/images/faq(1).png')
-                : require('./assets/images/faq.png')
-            }
+                : require('./assets/images/faq.png')}
             style={{ width: 24, height: 24, resizeMode: 'contain', marginBottom: -2 }}
           />
         ),
@@ -107,9 +128,26 @@ const MainTabs = () => (
 export default function App() {
   return (
     <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        <RootStack.Screen name="Tabs" component={MainTabs} />
-        <RootStack.Screen name="Result" component={DiagnosisResultScreen} />
+      <RootStack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName="Splash"
+      >
+        <RootStack.Screen
+          name="Splash"
+          component={require('./screens/SplashScreen').default}
+        />
+        <RootStack.Screen
+          name="Tabs"
+          children={() => <MainTabs />}
+        />
+        <RootStack.Screen
+          name="Result"
+          component={DiagnosisResultScreen}
+        />
+        <RootStack.Screen
+          name="RecordWave"
+          component={RecordScreen}
+        />
       </RootStack.Navigator>
     </NavigationContainer>
   );

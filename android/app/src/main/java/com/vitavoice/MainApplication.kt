@@ -12,23 +12,31 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
+// ✅ Native module import
+import com.vitavoice.nativemodules.AudioFileCopierPackage
+import com.vitavoice.AudioPickerPackage
+
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost =
-      object : DefaultReactNativeHost(this) {
-        override fun getPackages(): List<ReactPackage> =
-            PackageList(this).packages.apply {
-              // Packages that cannot be autolinked yet can be added manually here, for example:
-              // add(MyReactNativePackage())
-            }
+    object : DefaultReactNativeHost(this) {
+      override fun getPackages(): List<ReactPackage> {
+        val packages = PackageList(this).packages.toMutableList()
 
-        override fun getJSMainModuleName(): String = "index"
+        // ✅ SAF 오디오 탐색기 모듈 추가 (이미 있음)
+        packages.add(AudioPickerPackage())
 
-        override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+        // ✅ 파일 복사 네이티브 모듈 추가
+        packages.add(AudioFileCopierPackage())
 
-        override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-        override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
+        return packages
       }
+
+      override fun getJSMainModuleName(): String = "index"
+      override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+      override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+      override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
+    }
 
   override val reactHost: ReactHost
     get() = getDefaultReactHost(applicationContext, reactNativeHost)
@@ -37,8 +45,7 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     SoLoader.init(this, OpenSourceMergedSoMapping)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-      // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
     }
   }
-}
+} 

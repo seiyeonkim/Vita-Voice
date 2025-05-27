@@ -50,15 +50,15 @@ export default function DiagnosisScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 24 },
-  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20 },
-  sub: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 24 },
+  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginTop: 40, marginBottom: 12 },
+  sub: { fontSize: 18, color: '#888', textAlign: 'center', marginBottom: 32 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f9f9f9',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 16,
+    marginVertical: 8,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
