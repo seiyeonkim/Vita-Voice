@@ -18,7 +18,17 @@ export interface HistoryRecord {
 }
 
 /**
- * 서버에서 받아오는 진단 기록 항목 타입
+ * 서버 응답 raw 타입 (snake_case)
+ */
+interface RawServerHistoryRecord {
+  diagnosis_id: number;
+  file_id: string;
+  file_name: string;
+  upload_time: string;
+}
+
+/**
+ * 변환된 서버 기록 타입 (camelCase)
  */
 export interface ServerHistoryRecord {
   diagnosisId: number;
@@ -31,16 +41,29 @@ export interface ServerHistoryRecord {
  * 서버에서 진단 기록 리스트 가져오기 (GET /history/list)
  */
 export const getServerHistoryList = async (): Promise<ServerHistoryRecord[]> => {
-  const { data } = await API.get<ServerHistoryRecord[]>('/history/list');
-  return data;
+  const { data } = await API.get<RawServerHistoryRecord[]>('/history/list');
+
+  // snake_case → camelCase 변환
+  return data.map(item => ({
+    diagnosisId: item.diagnosis_id,
+    fileId: item.file_id,
+    fileName: item.file_name,
+    uploadTime: item.upload_time,
+  }));
 };
 
 /**
  * 모든 로컬 기록을 로드합니다.
  */
 export const loadHistory = async (): Promise<HistoryRecord[]> => {
-  const json = await AsyncStorage.getItem(HISTORY_KEY);
-  return json ? (JSON.parse(json) as HistoryRecord[]) : [];
+  try {
+    const json = await AsyncStorage.getItem(HISTORY_KEY);
+    return json ? (JSON.parse(json) as HistoryRecord[]) : [];
+  } catch (e) {
+    console.warn('로컬 기록 불러오기 실패 (JSON 파싱 오류):', e);
+    await AsyncStorage.removeItem(HISTORY_KEY);
+    return [];
+  }
 };
 
 /**
