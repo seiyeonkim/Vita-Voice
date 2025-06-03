@@ -1,3 +1,4 @@
+//사용자가 어떤 질병을 진단할지 선택하는 화면
 import React, { useState } from 'react';
 import {
   View,

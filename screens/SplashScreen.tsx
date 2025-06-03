@@ -1,3 +1,4 @@
+//앱을 처음 켰을 때 잠깐 보여주는 로딩/시작 화면
 import React, { useEffect } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';

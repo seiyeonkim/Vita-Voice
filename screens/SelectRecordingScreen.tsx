@@ -1,3 +1,4 @@
+//React Native 앱에서 진단에 사용할 녹음 파일을 선택하는 화면
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, StyleSheet, Image

@@ -1,4 +1,5 @@
 // src/screens/ResultScreen.tsx
+//사용자가 진단을 완료한 후, 해당 녹음의 진단 결과를 간결하게 요약해서 보여주는 정리 화면
 import React from 'react';
 import {
   View,

@@ -1,3 +1,4 @@
+//진단 시작 전 성별을 선택하는 화면
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';

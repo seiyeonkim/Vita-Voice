@@ -1,4 +1,5 @@
 // src/screens/DiagnosisResultScreen.tsx
+// 진단 결과를 보여주는 화면
 import React, { useEffect } from 'react';
 import {
   View,
