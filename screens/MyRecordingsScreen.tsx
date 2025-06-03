@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { Recording } from '../type';
 import DetailPlayer from '../components/DetailPlayer';
 import {
@@ -21,40 +22,41 @@ import {
 export default function MyRecordingsScreen() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const isFocused = useIsFocused();
 
-  // 화면 초기 로드: 저장된 녹음 목록 불러오기
+  // 화면이 포커스될 때마다 녹음 목록을 다시 로드
   useEffect(() => {
     (async () => {
       const list = await loadRecordings();
       setRecordings(list);
     })();
-  }, []);
+  }, [isFocused]);
 
-  // 삭제 처리: 서비스 함수 호출 후 상태 업데이트
+  // 삭제 처리
   const handleDelete = async (id: string) => {
     const updated = await deleteRecording(id);
     setRecordings(updated);
   };
 
-  // 이름 변경: 서비스 함수 호출 후 상태 업데이트
+  // 이름 변경 처리
   const handleRename = async (id: string, newTitle: string) => {
     const updated = await renameRecording(id, newTitle);
     setRecordings(updated);
   };
 
-  // ISO 문자열을 'YYYY-MM-DD HH:mm'로 포맷
+  // ISO 문자열 → 'YYYY-MM-DD HH:mm' 포맷
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
-  // 리스트 항목 렌더링
   const renderItem = ({ item }: { item: Recording }) => {
     const isExpanded = expandedId === item.id;
-    const durationSec = Number(item.duration);
+    // duration이 ms 단위라면 그대로, 초 단위면 ms→초 변환 필요
+    const durationSec = Math.round(Number(item.duration) / 1000);
 
     return (
       <View style={styles.wrapper}>
@@ -109,7 +111,6 @@ export default function MyRecordingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>내 음성 파일</Text>
       <FlatList
         data={recordings}
         keyExtractor={item => item.id}

@@ -1,12 +1,16 @@
+// navigation/type.ts
 import { Recording } from '../type';
 
 export type RootStackParamList = {
   Splash: undefined;
   Tabs: undefined;
   Home: undefined;
+
+  // onRecordComplete 콜백은 optional, 파라미터 없이도 허용
   Record: {
     onRecordComplete?: (recording: Recording) => void;
-  };
+  } | undefined;
+
   MyRecordings: undefined;
   Diagnosis: undefined;
   DiagnosisSelect: {
@@ -33,5 +37,5 @@ export type RootStackParamList = {
     diagnosis: ('parkinson' | 'language')[];
   };
   FAQ: undefined;
-  RecordWave: undefined; // ✅ 여기에 추가
+  RecordWave: undefined;
 };

@@ -1,7 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  TextInput, Image, Alert, Keyboard,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  Alert,
+  Keyboard,
 } from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { Recording } from '../type';
@@ -19,16 +25,16 @@ export default function DetailPlayer({
   onRename,
   onDelete,
 }: DetailPlayerProps) {
-  const initialDurationMs = (Number(recording.duration) || 0) * 1000; // 초→밀리초
-  const [isPlaying, setIsPlaying]       = useState(false);
-  const [positionSec, setPositionSec]   = useState(0);
-  const [durationSec, setDurationSec]   = useState(initialDurationMs);
-  const [isEditing, setIsEditing]       = useState(false);
-  const [tempTitle, setTempTitle]       = useState(recording.title);
+  // recording.duration은 ms 단위로 저장됨
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [positionMs, setPositionMs] = useState(0);
+  const [durationMs, setDurationMs] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempTitle, setTempTitle] = useState(recording.title);
   const isSeeking = useRef(false);
 
-  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
+    // 초기 duration을 playback listener가 세팅해줄 때까지 0으로 유지
     return () => {
       audioRecorderPlayer.stopPlayer();
       audioRecorderPlayer.removePlayBackListener();
@@ -40,24 +46,19 @@ export default function DetailPlayer({
       await audioRecorderPlayer.pausePlayer();
       setIsPlaying(false);
     } else {
-      // 이미 재생 중 멈춘 상태라면 resume, 아니면 새로 start
-      if (positionSec > 0 && positionSec < durationSec) {
-        await audioRecorderPlayer.resumePlayer();
-      } else {
-        await audioRecorderPlayer.startPlayer(recording.path);
-      }
-      // 플레이백 리스너 (위치와 전체 길이 동시 갱신)
+      await audioRecorderPlayer.startPlayer(recording.path);
       audioRecorderPlayer.addPlayBackListener(e => {
         if (!isSeeking.current) {
-          setPositionSec(e.currentPosition);
-          setDurationSec(e.duration);
+          setPositionMs(e.currentPosition);
+          setDurationMs(e.duration);
         }
         if (e.currentPosition >= e.duration) {
           audioRecorderPlayer.stopPlayer();
           audioRecorderPlayer.removePlayBackListener();
           setIsPlaying(false);
-          setPositionSec(0);
+          setPositionMs(0);
         }
+        return;
       });
       setIsPlaying(true);
     }
@@ -83,14 +84,11 @@ export default function DetailPlayer({
 
   const jumpSec = async (sec: number) => {
     isSeeking.current = true;
-    const target = positionSec + sec * 1000;
-    const clamped = Math.max(0, Math.min(durationSec, target));
-    await audioRecorderPlayer.seekToPlayer(clamped);
-    setPositionSec(clamped);
-    // 짧게 플래그 유지 후 해제
-    setTimeout(() => {
-      isSeeking.current = false;
-    }, 200);
+    const deltaMs = sec * 1000;
+    const target = Math.max(0, Math.min(durationMs, positionMs + deltaMs));
+    await audioRecorderPlayer.seekToPlayer(target);
+    setPositionMs(target);
+    setTimeout(() => { isSeeking.current = false; }, 200);
   };
 
   const confirmDelete = () => {
@@ -115,59 +113,40 @@ export default function DetailPlayer({
       <View style={styles.headerRow}>
         {isEditing ? (
           <TextInput
-            value={tempTitle}
             style={styles.titleInput}
+            value={tempTitle}
             onChangeText={setTempTitle}
             onBlur={handleRename}
             onSubmitEditing={handleRename}
             returnKeyType="done"
-            blurOnSubmit
+            autoFocus
           />
         ) : (
-          <TouchableOpacity
-            onLongPress={() => setIsEditing(true)}
-            style={{ flex: 1 }}>
+          <TouchableOpacity onLongPress={() => setIsEditing(true)} style={{ flex: 1 }}>
             <Text style={styles.title}>{recording.title}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={confirmDelete}
-          style={styles.deleteButton}>
+        <TouchableOpacity onPress={confirmDelete} style={styles.deleteButton}>
           <Text style={styles.deleteText}>삭제</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.metaInfo}>
-        {formatCreatedAt(recording.createdAt)}
-      </Text>
-      <Text style={styles.time}>
-        {formatTime(positionSec)} / {formatTime(durationSec)}
-      </Text>
+      <Text style={styles.metaInfo}>{formatCreatedAt(recording.createdAt)}</Text>
+
+      <Text style={styles.time}>{formatTime(positionMs)} / {formatTime(durationMs)}</Text>
 
       <View style={styles.controlsRow}>
         <TouchableOpacity onPress={() => jumpSec(-15)}>
-          <Image
-            source={require('../assets/images/backward.png')}
-            style={styles.controlIcon}
-          />
+          <Image source={require('../assets/images/backward.png')} style={styles.controlIcon} />
         </TouchableOpacity>
-
         <TouchableOpacity onPress={togglePlayback}>
           <Image
-            source={
-              isPlaying
-                ? require('../assets/images/pause.png')
-                : require('../assets/images/play.png')
-            }
+            source={isPlaying ? require('../assets/images/pause.png') : require('../assets/images/play.png')}
             style={styles.playIcon}
           />
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => jumpSec(15)}>
-          <Image
-            source={require('../assets/images/forward.png')}
-            style={styles.controlIcon}
-          />
+          <Image source={require('../assets/images/forward.png')} style={styles.controlIcon} />
         </TouchableOpacity>
       </View>
     </View>
@@ -176,17 +155,13 @@ export default function DetailPlayer({
 
 const styles = StyleSheet.create({
   playerContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
     padding: 16,
     borderRadius: 16,
     marginTop: 8,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
   },
   headerRow: {
@@ -223,13 +198,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     color: '#666',
-    textAlign: 'left',
   },
   time: {
     marginTop: 8,
-    textAlign: 'center',
     fontSize: 14,
     color: '#333',
+    textAlign: 'center',
   },
   controlsRow: {
     flexDirection: 'row',
