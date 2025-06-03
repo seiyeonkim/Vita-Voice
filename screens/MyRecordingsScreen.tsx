@@ -1,4 +1,5 @@
 // src/screens/MyRecordingsScreen.tsx
+// 사용자가 저장한 녹음 파일 목록을 관리하는 화면
 import React, { useEffect, useState } from 'react';
 import {
   View,

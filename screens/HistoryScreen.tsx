@@ -1,3 +1,4 @@
+// src/screens/HistoryScreen.tsx
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -15,6 +16,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/type';
 import { getServerHistoryList } from '../src/services/historyService';
+import {
+  getDiagnosisResult,
+  deleteDiagnosisResult,
+} from '../src/services/diagnosisHistoryService';
 
 type HistoryRecord = {
   id: string;
@@ -48,7 +53,6 @@ export default function HistoryScreen() {
         const json = await AsyncStorage.getItem('@history');
         const localRecords: HistoryRecord[] = json ? JSON.parse(json) : [];
 
-        // 서버 기록 가져오기
         let serverRecords: ServerHistoryRecord[] = [];
         try {
           serverRecords = await getServerHistoryList();
@@ -56,7 +60,6 @@ export default function HistoryScreen() {
           console.warn('서버 기록 불러오기 실패:', e);
         }
 
-        // 서버 데이터를 로컬 형식으로 변환
         const converted = serverRecords.map(
           (r): HistoryRecord => ({
             id: r.diagnosisId.toString(),
@@ -70,15 +73,11 @@ export default function HistoryScreen() {
           })
         );
 
-        // 로컬 + 서버 기록 병합
         const merged = [...converted, ...localRecords];
-
-        // 중복 제거 (id 기준)
         const unique = merged.filter(
           (rec, idx) => merged.findIndex(r => r.id === rec.id) === idx
         );
 
-        // 저장소에도 덮어쓰기
         if (unique.length !== localRecords.length) {
           await AsyncStorage.setItem('@history', JSON.stringify(unique));
         }
@@ -95,6 +94,17 @@ export default function HistoryScreen() {
         text: '삭제',
         style: 'destructive',
         onPress: async () => {
+          try {
+            const success = await deleteDiagnosisResult(Number(id));
+            if (!success) {
+              Alert.alert('오류', '서버 삭제 실패');
+              return;
+            }
+          } catch (err) {
+            Alert.alert('오류', '서버 요청 실패');
+            console.warn(err);
+          }
+
           const updated = records.filter(r => r.id !== id);
           setRecords(updated);
           await AsyncStorage.setItem('@history', JSON.stringify(updated));
@@ -113,15 +123,21 @@ export default function HistoryScreen() {
     setEditedTitle('');
   };
 
-  const goToResult = (item: HistoryRecord) => {
-    navigation.navigate('Result', {
-      recordingName: item.recordingName,
-      diagnosisDate: item.diagnosisDate,
-      prediction1: item.prediction1,
-      prediction2: item.prediction2,
-      diagnosis: item.diagnosis,
-      skipSave: true,
-    });
+  const goToResult = async (item: HistoryRecord) => {
+    try {
+      const result = await getDiagnosisResult(Number(item.id));
+
+      navigation.navigate('Result', {
+        recordingName: item.recordingName,
+        diagnosisDate: result.analyzedAt,
+        prediction1: result.prediction,
+        prediction2: 0,
+        diagnosis: [],
+        skipSave: true,
+      });
+    } catch (err) {
+      Alert.alert('에러', '결과를 불러오는 데 실패했습니다.');
+    }
   };
 
   const renderEmpty = () => (
@@ -174,7 +190,6 @@ export default function HistoryScreen() {
         }
       />
 
-      {/* 제목 변경 모달 */}
       <Modal visible={editingId !== null} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalBox}>
@@ -200,7 +215,8 @@ export default function HistoryScreen() {
   );
 }
 
-// 스타일은 이전과 동일합니다
+// styles 그대로 유지
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA', paddingHorizontal: 16 },
   headerBox: {

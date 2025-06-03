@@ -1,4 +1,5 @@
 // App.tsx (변경 없음)
+// 전체 네비게이션 설정 코드
 import React from 'react';
 import { Image } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';

@@ -1,4 +1,5 @@
 // src/screens/HomeScreen.tsx
+// 앱의 홈화면, 음성 녹음 / 파일 업로드 / 내 녹음 보기 세 가지 기능
 import React from 'react';
 import {
   View,
