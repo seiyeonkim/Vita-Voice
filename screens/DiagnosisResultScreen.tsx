@@ -1,5 +1,4 @@
 // src/screens/DiagnosisResultScreen.tsx
-// 진단 결과를 보여주는 화면
 import React, { useEffect } from 'react';
 import {
   View,
@@ -45,7 +44,7 @@ export default function DiagnosisResultScreen() {
   });
 
   useEffect(() => {
-    if (skipSave) return; // 이미 저장된 기록을 보러 온 경우 저장 로직 건너뜀
+    if (skipSave) return;
 
     const record: HistoryRecord = {
       id: `${recordingName}|${now}`,
@@ -65,7 +64,6 @@ export default function DiagnosisResultScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* 헤더 */}
       <View style={styles.header}>
         <View style={{ width: 24 }} />
         <Text style={styles.headerTitle}>진단 결과</Text>
@@ -74,7 +72,6 @@ export default function DiagnosisResultScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 파일명 · 진단 일시 */}
       <View style={styles.infoBox}>
         <Text style={styles.infoLabel}>파일명</Text>
         <Text style={styles.infoValue}>{recordingName}</Text>
@@ -82,7 +79,6 @@ export default function DiagnosisResultScreen() {
         <Text style={styles.infoValue}>{now}</Text>
       </View>
 
-      {/* 파킨슨병 결과 */}
       {diagnosis.includes('parkinson') && (
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
@@ -101,7 +97,6 @@ export default function DiagnosisResultScreen() {
         </View>
       )}
 
-      {/* 성대 질환 결과 */}
       {diagnosis.includes('language') && (
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>

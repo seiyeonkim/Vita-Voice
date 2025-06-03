@@ -127,12 +127,19 @@ export default function HistoryScreen() {
     try {
       const result = await getDiagnosisResult(Number(item.id));
 
+      const prediction1 = result.probabilities?.[0] ?? 0;
+      const prediction2 = result.probabilities?.[1] ?? 0;
+
+      const diagnosis: ('parkinson' | 'language')[] = [];
+      if (prediction1 >= 50) diagnosis.push('parkinson');
+      if (prediction2 >= 50) diagnosis.push('language');
+
       navigation.navigate('Result', {
         recordingName: item.recordingName,
         diagnosisDate: result.analyzedAt,
-        prediction1: result.prediction,
-        prediction2: 0,
-        diagnosis: [],
+        prediction1,
+        prediction2,
+        diagnosis,
         skipSave: true,
       });
     } catch (err) {
@@ -214,8 +221,6 @@ export default function HistoryScreen() {
     </View>
   );
 }
-
-// styles 그대로 유지
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA', paddingHorizontal: 16 },
