@@ -1,4 +1,3 @@
-// src/screens/HistoryScreen.tsx
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -15,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/type';
+import { getServerHistoryList } from '../src/services/historyService';
 
 type HistoryRecord = {
   id: string;
@@ -27,6 +27,13 @@ type HistoryRecord = {
   diagnosis: ('parkinson' | 'language')[];
 };
 
+type ServerHistoryRecord = {
+  diagnosisId: number;
+  fileId: string;
+  fileName: string;
+  uploadTime: string;
+};
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'History'>;
 
 export default function HistoryScreen() {
@@ -35,20 +42,44 @@ export default function HistoryScreen() {
   const [editedTitle, setEditedTitle] = useState('');
   const navigation = useNavigation<NavigationProp>();
 
-  // 포커스될 때마다 불러오되, 중복 제거
   useFocusEffect(
     useCallback(() => {
       (async () => {
         const json = await AsyncStorage.getItem('@history');
-        const parsed: HistoryRecord[] = json ? JSON.parse(json) : [];
+        const localRecords: HistoryRecord[] = json ? JSON.parse(json) : [];
 
-        // ── 중복 기록(id 기준) 제거 ──
-        const unique = parsed.filter(
-          (rec, idx) => parsed.findIndex(r => r.id === rec.id) === idx
+        // 서버 기록 가져오기
+        let serverRecords: ServerHistoryRecord[] = [];
+        try {
+          serverRecords = await getServerHistoryList();
+        } catch (e) {
+          console.warn('서버 기록 불러오기 실패:', e);
+        }
+
+        // 서버 데이터를 로컬 형식으로 변환
+        const converted = serverRecords.map(
+          (r): HistoryRecord => ({
+            id: r.diagnosisId.toString(),
+            title: r.fileName,
+            date: r.uploadTime,
+            recordingName: r.fileName,
+            diagnosisDate: r.uploadTime,
+            prediction1: 0,
+            prediction2: 0,
+            diagnosis: [],
+          })
+        );
+
+        // 로컬 + 서버 기록 병합
+        const merged = [...converted, ...localRecords];
+
+        // 중복 제거 (id 기준)
+        const unique = merged.filter(
+          (rec, idx) => merged.findIndex(r => r.id === rec.id) === idx
         );
 
         // 저장소에도 덮어쓰기
-        if (unique.length !== parsed.length) {
+        if (unique.length !== localRecords.length) {
           await AsyncStorage.setItem('@history', JSON.stringify(unique));
         }
 
@@ -57,7 +88,6 @@ export default function HistoryScreen() {
     }, [])
   );
 
-  // 삭제
   const deleteRecord = (id: string) => {
     Alert.alert('삭제 확인', '이 기록을 삭제하시겠습니까?', [
       { text: '취소', style: 'cancel' },
@@ -73,7 +103,6 @@ export default function HistoryScreen() {
     ]);
   };
 
-  // 제목 수정
   const saveEditedTitle = async () => {
     const updated = records.map(r =>
       r.id === editingId ? { ...r, title: editedTitle } : r
@@ -84,7 +113,6 @@ export default function HistoryScreen() {
     setEditedTitle('');
   };
 
-  // 결과 화면 이동
   const goToResult = (item: HistoryRecord) => {
     navigation.navigate('Result', {
       recordingName: item.recordingName,
@@ -96,14 +124,12 @@ export default function HistoryScreen() {
     });
   };
 
-  // 빈 상태
   const renderEmpty = () => (
     <View style={styles.emptyBox}>
       <Text style={styles.emptyText}>진단 기록이 없습니다.</Text>
     </View>
   );
 
-  // 카드
   const renderItem = ({ item }: { item: HistoryRecord }) => (
     <View style={styles.card}>
       <View style={styles.iconWrapper}>
