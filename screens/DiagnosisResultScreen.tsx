@@ -34,7 +34,6 @@ export default function DiagnosisResultScreen() {
     skipSave = false,
   } = route.params;
 
-  // 결과 화면에 표시할 “지금” 시각
   const now = new Date().toLocaleString('ko-KR', {
     year: 'numeric',
     month: '2-digit',
@@ -79,41 +78,39 @@ export default function DiagnosisResultScreen() {
         <Text style={styles.infoValue}>{now}</Text>
       </View>
 
-      {diagnosis.includes('parkinson') && (
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Image
-              source={require('../assets/images/brain.png')}
-              style={styles.icon}
-            />
-            <Text style={styles.cardTitle}>파킨슨병</Text>
-          </View>
-          <Text style={styles.resultText}>정상</Text>
-          <Text style={styles.probability}>예측 확률: {prediction1}%</Text>
-          <Text style={styles.cardDescription}>
-            파킨슨병은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
-            나타나지 않습니다.
-          </Text>
+      {/* 파킨슨병 카드 - 항상 표시 */}
+      <View style={styles.card}>
+        <View style={styles.cardTitleRow}>
+          <Image
+            source={require('../assets/images/brain.png')}
+            style={styles.icon}
+          />
+          <Text style={styles.cardTitle}>파킨슨병</Text>
         </View>
-      )}
+        <Text style={styles.resultText}>정상</Text>
+        <Text style={styles.probability}>예측 확률: {prediction1}%</Text>
+        <Text style={styles.cardDescription}>
+          파킨슨병은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
+          나타나지 않습니다.
+        </Text>
+      </View>
 
-      {diagnosis.includes('language') && (
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Image
-              source={require('../assets/images/language.png')}
-              style={styles.icon}
-            />
-            <Text style={styles.cardTitle}>성대 질환</Text>
-          </View>
-          <Text style={styles.resultText}>정상</Text>
-          <Text style={styles.probability}>예측 확률: {prediction2}%</Text>
-          <Text style={styles.cardDescription}>
-            성대 질환은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
-            나타나지 않습니다.
-          </Text>
+      {/* 성대 질환 카드 - 항상 표시 */}
+      <View style={styles.card}>
+        <View style={styles.cardTitleRow}>
+          <Image
+            source={require('../assets/images/language.png')}
+            style={styles.icon}
+          />
+          <Text style={styles.cardTitle}>성대 질환</Text>
         </View>
-      )}
+        <Text style={styles.resultText}>정상</Text>
+        <Text style={styles.probability}>예측 확률: {prediction2}%</Text>
+        <Text style={styles.cardDescription}>
+          성대 질환은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
+          나타나지 않습니다.
+        </Text>
+      </View>
     </ScrollView>
   );
 }
