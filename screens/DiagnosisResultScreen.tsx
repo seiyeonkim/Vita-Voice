@@ -58,7 +58,13 @@ export default function DiagnosisResultScreen() {
       diagnosis,
     };
 
-    addHistoryRecord(record);
+    (async () => {
+      try {
+        await addHistoryRecord(record);
+      } catch (e) {
+        console.warn('진단 기록 저장 실패:', e);
+      }
+    })();
   }, []);
 
   return (
@@ -78,7 +84,7 @@ export default function DiagnosisResultScreen() {
         <Text style={styles.infoValue}>{now}</Text>
       </View>
 
-      {/* 파킨슨병 카드 - 항상 표시 */}
+      {/* 파킨슨병 카드 */}
       <View style={styles.card}>
         <View style={styles.cardTitleRow}>
           <Image
@@ -95,7 +101,7 @@ export default function DiagnosisResultScreen() {
         </Text>
       </View>
 
-      {/* 성대 질환 카드 - 항상 표시 */}
+      {/* 성대 질환 카드 */}
       <View style={styles.card}>
         <View style={styles.cardTitleRow}>
           <Image
