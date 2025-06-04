@@ -41,15 +41,11 @@ export interface ServerHistoryRecord {
  * 서버에서 진단 기록 리스트 가져오기 (GET /history/list)
  */
 export const getServerHistoryList = async (): Promise<ServerHistoryRecord[]> => {
-  const { data } = await API.get<RawServerHistoryRecord[]>('/history/list');
-
-  // snake_case → camelCase 변환
-  return data.map(item => ({
-    diagnosisId: item.diagnosis_id,
-    fileId: item.file_id,
-    fileName: item.file_name,
-    uploadTime: item.upload_time,
-  }));
+  const response = await API.get<RawServerHistoryRecord[]>('/history/list');
+  console.log('서버 응답:', response.data);
+  const data = response.data;
+  
+  return data;
 };
 
 /**

@@ -56,6 +56,8 @@ export default function HistoryScreen() {
         let serverRecords: ServerHistoryRecord[] = [];
         try {
           serverRecords = await getServerHistoryList();
+          console.log("서버 기록 수:", serverRecords.length);
+          console.log("서버 기록 예시:", serverRecords[0]);
         } catch (e) {
           console.warn('서버 기록 불러오기 실패:', e);
         }
@@ -73,16 +75,10 @@ export default function HistoryScreen() {
           })
         );
 
-        const merged = [...converted, ...localRecords];
-        const unique = merged.filter(
-          (rec, idx) => merged.findIndex(r => r.id === rec.id) === idx
-        );
+        converted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        if (unique.length !== localRecords.length) {
-          await AsyncStorage.setItem('@history', JSON.stringify(unique));
-        }
+        setRecords(converted);
 
-        setRecords(unique);
       })();
     }, [])
   );
