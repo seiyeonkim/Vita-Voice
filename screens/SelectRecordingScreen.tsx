@@ -10,6 +10,8 @@ import { RootStackParamList } from '../navigation/type';
 import { RouteProp } from '@react-navigation/native';
 import { Recording } from '../type';
 
+import { uploadDiagnosis } from '../src/services/upload'
+
 const STORAGE_KEY = '@recordings';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'SelectRecording'>;
@@ -33,14 +35,29 @@ export default function SelectRecordingScreen() {
     load();
   }, []);
 
-  const handleSelect = (recording: Recording) => {
+const handleSelect = async (recording: Recording) => {
+  console.log('handleSelect 실행, 파일 URI:', recording.uri);
+  try {
+    const metadata = {
+      fileName: recording.title,
+      gender: gender,
+      duration: 7.2,
+    };
+
+    const result = await uploadDiagnosis(recording.uri, metadata);
+    console.log('업로드 성공:', result);
+
     navigation.navigate('Loading', {
       gender,
       diagnosis,
       recording,
       diagnosisDate,
     });
-  };
+  } catch (error) {
+    console.error('업로드 실패:', error);
+  }
+};
+
 
   const renderItem = ({ item }: { item: Recording }) => {
     const durationSec = Math.floor(Number(item.duration) / 1000);

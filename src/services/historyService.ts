@@ -41,7 +41,7 @@ export interface ServerHistoryRecord {
  * 서버에서 진단 기록 리스트 가져오기 (GET /history/list)
  */
 export const getServerHistoryList = async (): Promise<ServerHistoryRecord[]> => {
-  const response = await API.get<RawServerHistoryRecord[]>('/history/list');
+  const response = await API.get<ServerHistoryRecord[]>('/history/list');
   console.log('서버 응답:', response.data);
   const data = response.data;
   
