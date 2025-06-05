@@ -26,6 +26,7 @@ export type RootStackParamList = {
     diagnosis: ('parkinson' | 'language')[];
     diagnosisDate: string;
     recording: Recording;
+    fileId: string;
   };
   History: undefined;
   Result: {
@@ -35,6 +36,7 @@ export type RootStackParamList = {
     prediction2: number;
     skipSave?: boolean;
     diagnosis: ('parkinson' | 'language')[];
+    duration: number;
   };
   FAQ: undefined;
   RecordWave: undefined;

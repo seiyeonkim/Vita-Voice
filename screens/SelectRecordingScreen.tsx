@@ -47,11 +47,14 @@ const handleSelect = async (recording: Recording) => {
     const result = await uploadDiagnosis(recording.uri, metadata);
     console.log('업로드 성공:', result);
 
+    const fileId = result.data.fileId;
+    
     navigation.navigate('Loading', {
       gender,
       diagnosis,
       recording,
       diagnosisDate,
+      fileId,
     });
   } catch (error) {
     console.error('업로드 실패:', error);
