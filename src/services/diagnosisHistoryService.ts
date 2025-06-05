@@ -41,11 +41,15 @@ export const deleteDiagnosisResult = async (
       code: number;
       message: string;
       success: boolean;
-    }>(`/history/result/${diagnosisId}`);
+    }>(`/history/result/${diagnosisId}`,{
+      headers: {
+        'Content-Type': 'application/json'
+      },
+    });
 
     return data.success;
   } catch (error) {
     console.error('진단 결과 삭제 실패:', error);
-    throw new Error('서버에서 진단 결과 삭제에 실패했습니다.');
+    //throw new Error('서버에서 진단 결과 삭제에 실패했습니다.');
   }
 };

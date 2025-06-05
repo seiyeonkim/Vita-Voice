@@ -47,7 +47,7 @@ export default function LoadingScreen() {
           recordingName: recording.title,
           diagnosisDate,
           prediction1: probabilities[0], // ← 아래에서 진짜 prediction 값으로 대체
-          prediction2: probabilities[1],
+          prediction2: 0,
           diagnosis,
           duration : 10.0,
         });
