@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches:
-      - final-0603
+      - final-0603  # 이 브랜치에 push될 때마다 실행됨
 
 jobs:
   build:
@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Give gradlew permission
+      - name: Grant gradlew execute permission
         run: chmod +x android/gradlew
 
       - name: Build APK
@@ -36,7 +36,7 @@ jobs:
           ./gradlew assembleRelease
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # ✅ 최신 버전 사용
         with:
           name: VitaVoice-apk
           path: android/app/build/outputs/apk/release/app-release.apk
