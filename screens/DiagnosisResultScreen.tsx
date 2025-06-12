@@ -1,5 +1,8 @@
 // src/screens/DiagnosisResultScreen.tsx
 import React, { useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+
 import {
   View,
   Text,
@@ -30,9 +33,19 @@ export default function DiagnosisResultScreen() {
     recordingName,
     prediction1,
     prediction2,
-    diagnosis = [],
+    diagnosis: rawDiagnosis,
     skipSave = false,
   } = route.params;
+
+  useEffect(() => {
+    console.log('✅ useEffect 진입');
+  }, []);
+
+  const diagnosis = rawDiagnosis ?? [];
+
+  
+  const isParkinson = diagnosis.includes('parkinson');
+  const isLanguage = diagnosis.includes('language');
 
   const now = new Date().toLocaleString('ko-KR', {
     year: 'numeric',
@@ -41,10 +54,12 @@ export default function DiagnosisResultScreen() {
     hour: '2-digit',
     minute: '2-digit',
   });
-
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
+    console.log('route.params:', route.params);
+    console.log('diagnosis:', rawDiagnosis);
     if (skipSave) return;
-
+    console.log("diagnosis :", diagnosis)
     const record: HistoryRecord = {
       id: `${recordingName}|${now}`,
       title: diagnosis
@@ -65,7 +80,8 @@ export default function DiagnosisResultScreen() {
         console.warn('진단 기록 저장 실패:', e);
       }
     })();
-  }, []);
+  }, [route.params])
+);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -84,39 +100,44 @@ export default function DiagnosisResultScreen() {
         <Text style={styles.infoValue}>{now}</Text>
       </View>
 
+
       {/* 파킨슨병 카드 */}
-      <View style={styles.card}>
-        <View style={styles.cardTitleRow}>
-          <Image
-            source={require('../assets/images/brain.png')}
-            style={styles.icon}
-          />
+      {isParkinson && (
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+           <Image
+              source={require('../assets/images/brain.png')}
+             style={styles.icon}
+            />
           <Text style={styles.cardTitle}>파킨슨병</Text>
         </View>
-        <Text style={styles.resultText}>정상</Text>
-        <Text style={styles.probability}>예측 확률: {prediction1}%</Text>
-        <Text style={styles.cardDescription}>
-          파킨슨병은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
-          나타나지 않습니다.
+        <Text style={styles.resultText}>
+          {prediction1 <= 0.5 ? '정상' : prediction1 >= 0.7 ? '위험' : '주의'}
         </Text>
-      </View>
+        <Text style={styles.probability}>예측 확률: {(prediction1 * 100).toFixed(3)}%</Text>
+        <Text style={styles.cardDescription}>
+          파킨슨병은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가 나타나지 않습니다.
+        </Text>
+        </View>
+      )}
 
       {/* 성대 질환 카드 */}
-      <View style={styles.card}>
-        <View style={styles.cardTitleRow}>
-          <Image
+      {isLanguage && (
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+           <Image
             source={require('../assets/images/language.png')}
             style={styles.icon}
           />
           <Text style={styles.cardTitle}>성대 질환</Text>
         </View>
         <Text style={styles.resultText}>정상</Text>
-        <Text style={styles.probability}>예측 확률: {prediction2}%</Text>
+        <Text style={styles.probability}>예측 확률: {prediction1}%</Text>
         <Text style={styles.cardDescription}>
-          성대 질환은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가
-          나타나지 않습니다.
+          성대 질환은 정상 범위로 분석되었습니다. 현재로서는 특별한 이상 징후가 나타나지 않습니다.
         </Text>
       </View>
+      )}
     </ScrollView>
   );
 }

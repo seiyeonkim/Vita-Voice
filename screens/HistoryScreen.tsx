@@ -120,22 +120,36 @@ export default function HistoryScreen() {
   };
 
   const goToResult = async (item: HistoryRecord) => {
+    console.log('goToResult 호출됨:', item);
     try {
       const result = await getDiagnosisResult(Number(item.id));
 
       const prediction1 = result.probabilities?.[0] ?? 0;
       const prediction2 = result.probabilities?.[1] ?? 0;
 
-      const diagnosis: ('parkinson' | 'language')[] = [];
-      if (prediction1 >= 50) diagnosis.push('parkinson');
-      if (prediction2 >= 50) diagnosis.push('language');
-
-      navigation.navigate('Result', {
+      //const diagnosis: ('parkinson' | 'language')[] = [];
+      const diagnosis = "parkinson"
+      //**
+      // if (prediction1 >= 50) diagnosis.push('parkinson');
+      // if (prediction2 >= 50) diagnosis.push('language');
+      //  */
+      
+      console.log('navigate to Result with params:', {
+        recordingName: item.recordingName,
+        diagnosisDate: result.analyzedAt,
+        prediction1,
+        prediction2,
+        diagnosis: diagnosis,
+        duration: 10.3,
+        skipSave: true,
+      });
+      navigation.replace('Result', {
         recordingName: item.recordingName,
         diagnosisDate: result.analyzedAt,
         prediction1,
         prediction2,
         diagnosis,
+        duration: 10.3,
         skipSave: true,
       });
     } catch (err) {
